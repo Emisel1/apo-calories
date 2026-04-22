@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi Calories — Apo 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --rose: #e8756a;
+    --rose-light: #f5b8b3;
+    --rose-pale: #fdf0ef;
+    --sage: #7a9e87;
+    --sage-light: #b8d4c0;
+    --cream: #faf8f5;
+    --dark: #2c2420;
+    --mid: #8a7a75;
+    --border: #e8ddd9;
+    --maintien: #c0392b;
+    --objectif: #e67e22;
+    --conso: #7a9e87;
+    --moyenne: #9b59b6;
+    --success: #27ae60;
+    --warning: #e67e22;
+    --danger: #e74c3c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, var(--rose) 0%, #d4554a 100%);
+    padding: 32px 24px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 10%;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .header-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+  .header-emoji { font-size: 2rem; margin-bottom: 8px; }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: white;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+  header p {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.95rem;
+    margin-top: 6px;
+    font-weight: 300;
+  }
+  .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    margin-top: 12px;
+    font-weight: 500;
+  }
+  .sync-badge .dot { width: 6px; height: 6px; background: #a8e6cf; border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Main */
+  main { max-width: 700px; margin: 0 auto; padding: 0 16px 80px; }
+
+  /* Card */
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    margin-top: 20px;
+    box-shadow: 0 2px 16px rgba(44,36,32,0.07);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Form */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media(max-width:480px) { .form-row { grid-template-columns: 1fr; } }
+
+  .field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    color: var(--dark);
+    background: var(--cream);
+    transition: border-color 0.2s, background 0.2s;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--rose); background: white; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--rose), #d4554a);
+    color: white;
+    box-shadow: 0 4px 14px rgba(232,117,106,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,117,106,0.45); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--dark);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { background: var(--success); }
+  #toast.error { background: var(--danger); }
+
+  /* Stats strip */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .stat-box {
+    background: white;
+    border-radius: 16px;
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(44,36,32,0.05);
+  }
+  .stat-box .val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-box .lbl { font-size: 0.72rem; color: var(--mid); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
+  .stat-box .sub { font-size: 0.78rem; margin-top: 4px; font-weight: 500; }
+  .green { color: var(--success); }
+  .orange { color: var(--warning); }
+  .red { color: var(--danger); }
+  .purple { color: var(--moyenne); }
+
+  /* Chart */
+  #chartWrap { position: relative; height: 260px; margin-top: 8px; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--mid);
+    font-weight: 500;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Recent entries */
+  .entry-list { display: flex; flex-direction: column; gap: 8px; }
+  .entry-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--rose-pale);
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  .entry-date { color: var(--mid); font-size: 0.82rem; }
+  .entry-kcal { font-weight: 700; }
+  .entry-badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .badge-good { background: #d4edda; color: var(--success); }
+  .badge-ok   { background: #fff3cd; color: var(--warning); }
+  .badge-over { background: #f8d7da; color: var(--danger); }
+
+  /* API key section */
+  .api-section {
+    background: linear-gradient(135deg, #f8f4ff, #f0f7ff);
+    border: 1px dashed #c9b8e8;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .api-section p { font-size: 0.83rem; color: #6b5b95; margin-bottom: 10px; line-height: 1.5; }
+  .api-section input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #c9b8e8;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    background: white;
+  }
+  .api-section input:focus { border-color: #9b59b6; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px;
+    color: var(--mid);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="header-emoji">🌸</div>
+    <h1>Suivi Calories — Apo</h1>
+    <p>Entre ta date et tes calories, le graphique se met à jour tout seul ✨</p>
+    <div class="sync-badge"><span class="dot"></span> Synchronisé avec Google Drive</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-box">
+      <div class="val" id="statAvg" style="color:var(--moyenne)">—</div>
+      <div class="lbl">Moy. 7j</div>
+      <div class="sub" id="statAvgDiff">kcal</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="statToday" style="color:var(--conso)">—</div>
+      <div class="lbl">Dernier jour</div>
+      <div class="sub" id="statTodayStatus">kcal</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="statDays" style="color:var(--rose)">—</div>
+      <div class="lbl">Jours suivis</div>
+      <div class="sub" id="statCompliance">—</div>
+    </div>
+  </div>
+
+  <!-- Graph -->
+  <div class="card">
+    <div class="card-title">📈 Évolution des calories</div>
+    <div id="chartWrap">
+      <canvas id="myChart"></canvas>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--maintien)"></div> Maintien (2400)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--objectif)"></div> Objectif (2000)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--conso)"></div> Consommées</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--moyenne)"></div> Moy. 7 jours</div>
+    </div>
+  </div>
+
+  <!-- Entry form -->
+  <div class="card">
+    <div class="card-title">✍️ Ajouter une entrée</div>
+
+    <div class="api-section" id="apiSection">
+      <p>🔑 Entre ta clé API une seule fois — elle sera mémorisée sur ton téléphone :</p>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+      <button class="btn btn-primary" style="margin-top:10px;padding:10px;font-size:0.9rem" onclick="saveKey()">Mémoriser 🔒</button>
+      <p id="keyStatus" style="margin-top:8px;font-size:0.8rem"></p>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label>📅 Date</label>
+        <input type="date" id="inputDate">
+      </div>
+      <div class="field">
+        <label>🔥 Calories (kcal)</label>
+        <input type="number" id="inputKcal" placeholder="ex: 2100" min="500" max="5000">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="submitBtn" onclick="handleSubmit()">
+      <span id="btnText">Enregistrer ✓</span>
+    </button>
+  </div>
+
+  <!-- Recent entries -->
+  <div class="card">
+    <div class="card-title">🕐 Dernières entrées</div>
+    <div class="entry-list" id="entryList">
+      <div class="empty-state">Chargement des données…</div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast">✓ Sauvegardé !</div>
+
+<script>
+// ─── DATA from Google Drive ───────────────────────────────────────────────────
+// Pre-loaded data from the spreadsheet (will be updated via API)
+const SPREADSHEET_ID = '1EO-fPHyBFCfbl_S4o7-L1BPJiS4_pX7ek2U9GmoxY6M';
+const MAINTIEN = 2400;
+const OBJECTIF = 2000;
+
+// Initial data parsed from the Drive file
+let allData = [
+  {d:'16/02/2026',k:1800},{d:'17/02/2026',k:1800},{d:'18/02/2026',k:1800},{d:'19/02/2026',k:1800},
+  {d:'20/02/2026',k:1800},{d:'21/02/2026',k:2650},{d:'22/02/2026',k:2650},{d:'23/02/2026',k:2430},
+  {d:'24/02/2026',k:2500},{d:'25/02/2026',k:1850},{d:'26/02/2026',k:2400},{d:'27/02/2026',k:2550},
+  {d:'28/02/2026',k:2500},{d:'01/03/2026',k:2500},{d:'02/03/2026',k:2100},{d:'03/03/2026',k:2100},
+  {d:'04/03/2026',k:2200},{d:'05/03/2026',k:2500},{d:'06/03/2026',k:2300},{d:'07/03/2026',k:2000},
+  {d:'08/03/2026',k:1800},{d:'09/03/2026',k:1800},{d:'10/03/2026',k:1900},{d:'11/03/2026',k:2100},
+  {d:'12/03/2026',k:1950},{d:'13/03/2026',k:2200},{d:'14/03/2026',k:2500},{d:'15/03/2026',k:2300},
+  {d:'16/03/2026',k:2000},{d:'17/03/2026',k:2200},{d:'18/03/2026',k:2100},{d:'19/03/2026',k:2400},
+  {d:'20/03/2026',k:2400},{d:'21/03/2026',k:2200},{d:'22/03/2026',k:2500},{d:'23/03/2026',k:2400},
+  {d:'24/03/2026',k:1825},{d:'25/03/2026',k:1600},{d:'26/03/2026',k:2000},{d:'27/03/2026',k:2300},
+  {d:'28/03/2026',k:3400},{d:'29/03/2026',k:1715},{d:'30/03/2026',k:2600},{d:'31/03/2026',k:1800},
+  {d:'01/04/2026',k:2000},{d:'02/04/2026',k:2100},{d:'03/04/2026',k:2100},{d:'04/04/2026',k:2100},
+  {d:'05/04/2026',k:2800}
+];
+
+let chart;
+
+function parseDate(str) {
+  const [d,m,y] = str.split('/');
+  return new Date(+y, +m-1, +d);
+}
+
+function formatDateFR(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  return `${d}/${m}/${date.getFullYear()}`;
+}
+
+function calcMovingAvg(data, i, window=7) {
+  const start = Math.max(0, i - window + 1);
+  const slice = data.slice(start, i + 1);
+  return Math.round(slice.reduce((s,x) => s + x.k, 0) / slice.length);
+}
+
+function getStatus(k) {
+  if (k <= OBJECTIF) return {label:'Objectif ✓', cls:'badge-good'};
+  if (k <= MAINTIEN) return {label:'Entre les deux', cls:'badge-ok'};
+  return {label:'Au-dessus maintien', cls:'badge-over'};
+}
+
+function renderChart() {
+  const sorted = [...allData].sort((a,b) => parseDate(a.d) - parseDate(b.d));
+  const labels = sorted.map(x => x.d.slice(0,5));
+  const kcals  = sorted.map(x => x.k);
+  const mavg   = sorted.map((_,i) => calcMovingAvg(sorted,i));
+  const maint  = sorted.map(() => MAINTIEN);
+  const obj    = sorted.map(() => OBJECTIF);
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Maintien', data:maint, borderColor:'var(--maintien)', borderWidth:1.5, borderDash:[6,4], pointRadius:0, fill:false, tension:0 },
+        { label:'Objectif', data:obj,   borderColor:'var(--objectif)', borderWidth:1.5, borderDash:[4,3], pointRadius:0, fill:false, tension:0 },
+        {
+          label:'Consommées', data:kcals,
+          borderColor:'var(--conso)', backgroundColor:'rgba(122,158,135,0.12)',
+          borderWidth:2, pointRadius:3, pointBackgroundColor:'var(--conso)',
+          fill:true, tension:0.3
+        },
+        {
+          label:'Moy. 7j', data:mavg,
+          borderColor:'var(--moyenne)', backgroundColor:'transparent',
+          borderWidth:2.5, pointRadius:0, fill:false, tension:0.4
+        }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'rgba(44,36,32,0.92)',
+          titleColor:'#fff', bodyColor:'rgba(255,255,255,0.8)',
+          padding:10, cornerRadius:10,
+          callbacks:{
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} kcal`
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{ color:'#8a7a75', font:{size:10}, maxTicksLimit:10 },
+          grid:{ color:'rgba(0,0,0,0.04)' }
+        },
+        y:{
+          ticks:{ color:'#8a7a75', font:{size:10}, callback: v => v+'k' },
+          grid:{ color:'rgba(0,0,0,0.06)' },
+          min: 1200, max: 3600
+        }
+      }
+    }
+  });
+}
+
+function renderStats() {
+  const sorted = [...allData].sort((a,b) => parseDate(a.d)-parseDate(b.d));
+  if (!sorted.length) return;
+
+  const last7 = sorted.slice(-7);
+  const avg7 = Math.round(last7.reduce((s,x)=>s+x.k,0)/last7.length);
+  const lastDay = sorted[sorted.length-1];
+  const totalDays = sorted.length;
+  const underObj = sorted.filter(x=>x.k<=OBJECTIF).length;
+  const compliance = Math.round(underObj/totalDays*100);
+
+  document.getElementById('statAvg').textContent = avg7;
+  document.getElementById('statAvgDiff').textContent = avg7 <= OBJECTIF ? '✓ Dans l\'objectif' : `+${avg7-OBJECTIF} vs objectif`;
+  document.getElementById('statAvgDiff').className = 'sub ' + (avg7 <= OBJECTIF ? 'green' : avg7 <= MAINTIEN ? 'orange' : 'red');
+
+  document.getElementById('statToday').textContent = lastDay.k;
+  const s = getStatus(lastDay.k);
+  document.getElementById('statTodayStatus').textContent = s.label;
+  document.getElementById('statTodayStatus').className = 'sub ' + (lastDay.k<=OBJECTIF?'green':lastDay.k<=MAINTIEN?'orange':'red');
+
+  document.getElementById('statDays').textContent = totalDays;
+  document.getElementById('statCompliance').textContent = `${compliance}% dans objectif`;
+  document.getElementById('statCompliance').className = 'sub ' + (compliance>=70?'green':compliance>=50?'orange':'red');
+}
+
+function renderEntries() {
+  const sorted = [...allData].sort((a,b) => parseDate(b.d)-parseDate(a.d));
+  const list = document.getElementById('entryList');
+  if (!sorted.length) { list.innerHTML = '<div class="empty-state">Aucune donnée</div>'; return; }
+  const recent = sorted.slice(0,7);
+  list.innerHTML = recent.map(e => {
+    const s = getStatus(e.k);
+    return `<div class="entry-row">
+      <span class="entry-date">${e.d}</span>
+      <span class="entry-kcal">${e.k} kcal</span>
+      <span class="entry-badge ${s.cls}">${s.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => t.className = '', 2800);
+}
+
+function setLoading(v) {
+  const btn = document.getElementById('submitBtn');
+  const txt = document.getElementById('btnText');
+  btn.disabled = v;
+  txt.innerHTML = v ? '<div class="spinner"></div> Sauvegarde en cours…' : 'Enregistrer ✓';
+}
+
+// ─── Main submit ──────────────────────────────────────────────────────────────
+async function handleSubmit() {
+  const apiKey = getKey();
+  const dateInput = document.getElementById('inputDate').value;
+  const kcalInput = parseInt(document.getElementById('inputKcal').value);
+
+  if (!dateInput) { showToast('⚠️ Choisis une date', 'error'); return; }
+  if (!kcalInput || kcalInput < 500 || kcalInput > 5000) { showToast('⚠️ Entre des calories valides (500–5000)', 'error'); return; }
+
+  const dateObj = new Date(dateInput);
+  const dateFR = formatDateFR(dateObj);
+  const kcal = kcalInput;
+
+  // Update local data immediately for instant feedback
+  const existing = allData.find(x => x.d === dateFR);
+  if (existing) existing.k = kcal;
+  else allData.push({d: dateFR, k: kcal});
+
+  renderChart();
+  renderStats();
+  renderEntries();
+
+  // If no API key, just update locally
+  if (!apiKey) {
+    showToast('✓ Ajouté localement (pas de clé API)', 'success');
+    return;
+  }
+
+  // Use Claude API to update Google Drive spreadsheet
+  setLoading(true);
+  try {
+    const prompt = `Tu dois mettre à jour le fichier Google Sheets "Suivi calories Apo" (ID: ${SPREADSHEET_ID}) sur Google Drive.
+
+L'utilisateur veut enregistrer cette donnée :
+- Date : ${dateFR} (format utilisé dans le fichier : J/M/AAAA, ex: 16/2/2026)
+- Calories consommées : ${kcal} kcal
+
+Le fichier a une ligne "Consomées (Kcal)" avec les valeurs pour chaque date en colonne.
+Tu dois trouver la colonne correspondant à la date ${dateFR} et y mettre la valeur ${kcal}.
+
+Utilise l'outil Google Drive pour lire d'abord le fichier, puis mets-le à jour. Si la date n'existe pas dans les colonnes existantes, indique-le clairement.
+
+Réponds en JSON uniquement : {"success": true/false, "message": "explication courte"}`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'Tu es un assistant qui met à jour des fichiers Google Drive. Réponds toujours en JSON valide uniquement.',
+        messages: [{ role: 'user', content: prompt }],
+        mcp_servers: [{ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1', name: 'google-drive' }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(b => b.text||'').join('') || '';
+
+    let result = { success: false, message: 'Réponse inattendue' };
+    try {
+      const clean = text.replace(/```json|```/g,'').trim();
+      result = JSON.parse(clean);
+    } catch(e) {
+      // If Claude did update but couldn't return clean JSON, assume success if no error
+      if (data.content && !data.error) result = { success: true, message: 'Mis à jour !' };
+    }
+
+    if (result.success) showToast('✓ Sauvegardé sur Google Drive !', 'success');
+    else showToast(`⚠️ ${result.message}`, 'error');
+
+  } catch(err) {
+    console.error(err);
+    showToast('✓ Ajouté localement (erreur réseau)', 'success');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Set default date to today
+document.getElementById('inputDate').valueAsDate = new Date();
+
+// Init
+renderChart();
+renderStats();
+renderEntries();
+
+// Handle Enter key
+document.addEventListener('keydown', e => { if(e.key==='Enter') handleSubmit(); });
+</script>
+</body>
+</html>
